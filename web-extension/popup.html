@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PageIntel AI - Redis Vector Assistant</title>
+  <style>
+    :root {
+      --bg-primary: #0b0f19;
+      --bg-secondary: #111827;
+      --bg-card: rgba(17, 24, 39, 0.85);
+      --bg-card-hover: rgba(31, 41, 55, 0.9);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --border-focus: #6366f1;
+      --text-primary: #f9fafb;
+      --text-secondary: #9ca3af;
+      --text-muted: #6b7280;
+      --accent-indigo: #6366f1;
+      --accent-indigo-hover: #4f46e5;
+      --accent-emerald: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-cyan: #06b6d4;
+      --accent-rose: #f43f5e;
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+      --shadow-md: 0 4px 14px rgba(0,0,0,0.5);
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      width: 440px;
+      height: 600px;
+      display: flex;
+      flex-direction: column;
+      font-family: var(--font-sans);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-size: 13px;
+      line-height: 1.5;
+      overflow: hidden;
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 5px;
+    }
+    ::-webkit-scrollbar-track {
+      background: var(--bg-primary);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #374151;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #4b5563;
+    }
+
+    .app-container {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      position: relative;
+    }
+
+    /* Header */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border-color);
+      z-index: 20;
+      flex-shrink: 0;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .brand-icon {
+      width: 28px;
+      height: 28px;
+      background: linear-gradient(135deg, #6366f1 0%, #ec4899 100%);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      box-shadow: 0 2px 10px rgba(99, 102, 241, 0.4);
+    }
+
+    .brand-info {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .brand-title {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: -0.2px;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .redis-status-badge {
+      font-size: 10px;
+      padding: 2px 7px;
+      border-radius: 12px;
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--accent-emerald);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      font-weight: 600;
+      letter-spacing: 0.2px;
+      transition: all 0.2s ease;
+    }
+
+    .redis-status-badge.syncing {
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--accent-amber);
+      border-color: rgba(245, 158, 11, 0.3);
+    }
+
+    .redis-status-badge.error {
+      background: rgba(244, 63, 94, 0.15);
+      color: var(--accent-rose);
+      border-color: rgba(244, 63, 94, 0.3);
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .icon-btn {
+      background: transparent;
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+      cursor: pointer;
+      width: 28px;
+      height: 28px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+
+    .icon-btn:hover {
+      background: var(--bg-card-hover);
+      color: var(--text-primary);
+      border-color: var(--text-muted);
+    }
+
+    /* Page Info Bar */
+    .page-bar {
+      display: flex;
+      align-items: center;
+      padding: 7px 14px;
+      background: rgba(17, 24, 39, 0.7);
+      border-bottom: 1px solid var(--border-color);
+      font-size: 11px;
+      color: var(--text-secondary);
+      flex-shrink: 0;
+    }
+
+    .page-bar-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      width: 100%;
+    }
+
+    .domain-tag {
+      font-weight: 600;
+      color: var(--accent-cyan);
+      background: rgba(6, 182, 212, 0.1);
+      padding: 1px 6px;
+      border-radius: 4px;
+      border: 1px solid rgba(6, 182, 212, 0.2);
+      flex-shrink: 0;
+    }
+
+    .page-title-text {
+      color: var(--text-muted);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* Main Chat Stream Container */
+    .chat-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* Chat Messages */
+    .chat-message {
+      display: flex;
+      flex-direction: column;
+      max-width: 90%;
+      animation: fadeIn 0.2s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .chat-message.user {
+      align-self: flex-end;
+      align-items: flex-end;
+    }
+
+    .chat-message.assistant {
+      align-self: flex-start;
+      align-items: flex-start;
+    }
+
+    .message-bubble {
+      padding: 9px 13px;
+      border-radius: 12px;
+      font-size: 12.5px;
+      line-height: 1.5;
+      word-break: break-word;
+    }
+
+    .chat-message.user .message-bubble {
+      background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+      color: #ffffff;
+      border-bottom-right-radius: 3px;
+      box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+    }
+
+    .chat-message.assistant .message-bubble {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      border-bottom-left-radius: 3px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .chat-message.assistant .message-bubble p {
+      margin-bottom: 6px;
+    }
+    .chat-message.assistant .message-bubble p:last-child {
+      margin-bottom: 0;
+    }
+
+    .chat-message.assistant .message-bubble ul,
+    .chat-message.assistant .message-bubble ol {
+      margin: 4px 0 6px 18px;
+    }
+
+    .chat-message.assistant .message-bubble code {
+      background: rgba(0, 0, 0, 0.4);
+      padding: 1px 4px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 11.5px;
+      color: #38bdf8;
+    }
+
+    .chat-message.assistant .message-bubble pre {
+      background: rgba(0, 0, 0, 0.5);
+      padding: 8px;
+      border-radius: 6px;
+      overflow-x: auto;
+      margin: 6px 0;
+      font-family: monospace;
+      font-size: 11.5px;
+    }
+
+    .tool-used-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 10px;
+      padding: 2px 7px;
+      background: rgba(99, 102, 241, 0.1);
+      border: 1px solid rgba(99, 102, 241, 0.25);
+      border-radius: 5px;
+      color: #a5b4fc;
+      margin-bottom: 7px;
+      font-weight: 500;
+    }
+
+    .message-meta {
+      font-size: 10px;
+      color: var(--text-muted);
+      margin-top: 3px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Sources / Retrieved Chunks Accordion */
+    .sources-details {
+      margin-top: 6px;
+      font-size: 11px;
+      width: 100%;
+    }
+
+    .sources-summary {
+      cursor: pointer;
+      color: var(--accent-indigo);
+      font-size: 10.5px;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      opacity: 0.9;
+    }
+    .sources-summary:hover {
+      opacity: 1;
+      text-decoration: underline;
+    }
+
+    .sources-list {
+      margin-top: 5px;
+      padding: 6px 8px;
+      background: rgba(0, 0, 0, 0.35);
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .source-item {
+      font-size: 10.5px;
+      color: var(--text-secondary);
+      border-bottom: 1px dashed rgba(255,255,255,0.06);
+      padding-bottom: 3px;
+    }
+    .source-item:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    /* Dynamic Thinking / Tool Indicator */
+    .thinking-bubble {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      padding: 9px 13px;
+      background: var(--bg-card);
+      border: 1px solid rgba(99, 102, 241, 0.25);
+      border-radius: 12px;
+      border-bottom-left-radius: 3px;
+      font-size: 11.5px;
+      min-width: 210px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+      animation: fadeIn 0.2s ease;
+    }
+
+    .thinking-top-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .dots-flurry {
+      display: flex;
+      gap: 4px;
+    }
+    .dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--accent-indigo);
+      animation: pulseDot 1.4s infinite ease-in-out both;
+    }
+    .dot:nth-child(1) { animation-delay: -0.32s; }
+    .dot:nth-child(2) { animation-delay: -0.16s; }
+
+    @keyframes pulseDot {
+      0%, 80%, 100% { transform: scale(0); opacity: 0.3; }
+      40% { transform: scale(1); opacity: 1; }
+    }
+
+    .tool-badge-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 7px;
+      background: rgba(99, 102, 241, 0.15);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      border-radius: 10px;
+      font-size: 10px;
+      font-weight: 600;
+      color: #818cf8;
+      letter-spacing: 0.2px;
+      transition: all 0.25s ease;
+    }
+
+    .tool-status-text {
+      color: var(--text-secondary);
+      font-size: 11px;
+      margin-left: 2px;
+      transition: all 0.25s ease;
+    }
+
+    /* Quick Prompt Chips */
+    .quick-chips-bar {
+      display: flex;
+      gap: 6px;
+      padding: 6px 14px 2px 14px;
+      overflow-x: auto;
+      flex-shrink: 0;
+    }
+    .quick-chip {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+      padding: 3px 9px;
+      border-radius: 12px;
+      font-size: 10.5px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s ease;
+    }
+    .quick-chip:hover {
+      background: var(--bg-card-hover);
+      color: var(--text-primary);
+      border-color: var(--accent-indigo);
+    }
+
+    /* Chat Input Area */
+    .input-section {
+      padding: 8px 14px 12px 14px;
+      background: var(--bg-secondary);
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .input-wrapper {
+      display: flex;
+      align-items: flex-end;
+      gap: 8px;
+      background: var(--bg-primary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 6px 10px;
+      transition: border-color 0.2s ease;
+    }
+    .input-wrapper:focus-within {
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+    }
+
+    textarea#user-query {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: var(--text-primary);
+      font-family: inherit;
+      font-size: 12.5px;
+      resize: none;
+      max-height: 80px;
+      outline: none;
+      line-height: 1.4;
+    }
+    textarea#user-query::placeholder {
+      color: var(--text-muted);
+    }
+
+    .send-btn {
+      background: var(--accent-indigo);
+      border: none;
+      color: white;
+      width: 28px;
+      height: 28px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: all 0.2s ease;
+    }
+    .send-btn:hover:not(:disabled) {
+      background: var(--accent-indigo-hover);
+    }
+    .send-btn:disabled {
+      background: #374151;
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+
+    .input-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
+    .clear-chat-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 10px;
+      transition: color 0.2s;
+    }
+    .clear-chat-btn:hover {
+      color: var(--accent-rose);
+    }
+
+    /* Settings Drawer */
+    .settings-drawer {
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      background: var(--bg-primary);
+      z-index: 50;
+      display: flex;
+      flex-direction: column;
+      padding: 16px;
+      gap: 14px;
+      transform: translateX(100%);
+      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      overflow-y: auto;
+    }
+    .settings-drawer.open {
+      transform: translateX(0);
+    }
+
+    .settings-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 10px;
+    }
+    .settings-header h3 {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .form-group label {
+      font-size: 11px;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+    .form-control {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      padding: 7px 10px;
+      color: var(--text-primary);
+      font-family: inherit;
+      font-size: 12px;
+      outline: none;
+    }
+    .form-control:focus {
+      border-color: var(--border-focus);
+    }
+
+    .btn-primary {
+      background: var(--accent-indigo);
+      color: white;
+      border: none;
+      padding: 9px 14px;
+      border-radius: var(--radius-sm);
+      font-weight: 600;
+      font-size: 12px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-primary:hover {
+      background: var(--accent-indigo-hover);
+    }
+
+    .server-status-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 10px;
+      font-size: 11px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    /* OCR & PDF Styles */
+    .icon-btn.active {
+      background: var(--accent-indigo);
+      color: white;
+      border-color: var(--accent-indigo);
+    }
+
+    .ocr-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 2px 7px;
+      background: rgba(99, 102, 241, 0.18);
+      border: 1px solid rgba(99, 102, 241, 0.35);
+      border-radius: 6px;
+      font-size: 10px;
+      font-weight: 600;
+      color: #a5b4fc;
+      margin-bottom: 6px;
+    }
+
+    .ocr-card {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .ocr-thumb {
+      max-width: 100%;
+      max-height: 120px;
+      object-fit: contain;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+      background: #000;
+    }
+
+    .pdf-badge {
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 4px;
+      background: rgba(239, 68, 68, 0.15);
+      color: #f87171;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      font-weight: 600;
+    }
+
+    /* In-Popup Cropper Modal */
+    .cropper-modal {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: var(--bg-primary);
+      z-index: 60;
+      display: flex;
+      flex-direction: column;
+      padding: 12px;
+      gap: 8px;
+    }
+    .cropper-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+    .cropper-canvas-wrap {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      background: #000;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: crosshair;
+    }
+    #cropper-preview-img {
+      max-width: 100%;
+      max-height: 100%;
+      user-select: none;
+      pointer-events: none;
+    }
+    .cropper-box {
+      position: absolute;
+      border: 2px dashed #6366f1;
+      background: rgba(99, 102, 241, 0.2);
+      display: none;
+      pointer-events: none;
+    }
+    .cropper-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header>
+      <div class="brand">
+        <div class="brand-icon">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+          </svg>
+        </div>
+        <div class="brand-info">
+          <div class="brand-title">
+            <span>PageIntel AI</span>
+            <span id="redis-status-badge" class="redis-status-badge">⚡ Redis Ready</span>
+          </div>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button id="ocr-screen-btn" class="icon-btn" title="📸 Capture Visible Screen & Run OCR">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+            <circle cx="12" cy="13" r="4"></circle>
+          </svg>
+        </button>
+        <button id="snip-area-btn" class="icon-btn" title="✂️ Snip Area to OCR (Formula, Table, Diagram)">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="6" cy="6" r="3"></circle>
+            <circle cx="6" cy="18" r="3"></circle>
+            <line x1="20" y1="4" x2="8.12" y2="15.88"></line>
+            <line x1="14.47" y1="14.48" x2="20" y2="20"></line>
+            <line x1="8.12" y1="8.12" x2="12" y2="12"></line>
+          </svg>
+        </button>
+        <button id="refresh-btn" class="icon-btn" title="Refresh Page Content & Re-sync">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+          </svg>
+        </button>
+        <button id="settings-btn" class="icon-btn" title="Settings">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Page Info Bar -->
+    <div class="page-bar">
+      <div class="page-bar-left">
+        <span id="domain-tag" class="domain-tag">Connecting...</span>
+        <span id="page-title" class="page-title-text">Detecting active page...</span>
+      </div>
+    </div>
+
+    <!-- In-Popup Cropper Modal -->
+    <div id="cropper-modal" class="cropper-modal" style="display:none;">
+      <div class="cropper-header">
+        <span>✂️ Drag to select region to OCR</span>
+        <button id="close-cropper-btn" class="icon-btn">✕</button>
+      </div>
+      <div class="cropper-canvas-wrap" id="cropper-canvas-wrap">
+        <img id="cropper-preview-img" src="" alt="Screenshot" />
+        <div id="cropper-box" class="cropper-box"></div>
+      </div>
+      <div class="cropper-footer">
+        <span id="cropper-dims">Drag box over content</span>
+        <button id="execute-crop-btn" class="btn-primary" style="padding: 5px 12px; font-size: 11px;">⚡ OCR Selection</button>
+      </div>
+    </div>
+
+    <!-- Chat Stream Container -->
+    <div class="chat-container" id="chat-messages-container">
+      <!-- Welcome Message -->
+      <div class="chat-message assistant">
+        <div class="message-bubble">
+          <p>Ask anything about this page — I'll find relevant information and answer your questions.</p>
+        </div>
+        <div class="message-meta">PageIntel AI</div>
+      </div>
+    </div>
+
+    <!-- Quick Chips Bar -->
+    <div class="quick-chips-bar">
+      <button class="quick-chip" data-prompt="Summarize the core points of this page in 3 bullets.">📝 Summary</button>
+      <button class="quick-chip" data-prompt="What are the key takeaways from this page?">🎯 Key Points</button>
+      <button class="quick-chip" data-prompt="Extract any specifications, dates, prices, or technical details from this page.">📊 Key Specs</button>
+      <button class="quick-chip" data-prompt="Explain what this page is about in simple terms.">💡 Explain Simply</button>
+    </div>
+
+    <!-- Input Section -->
+    <div class="input-section">
+      <div class="input-wrapper">
+        <textarea id="user-query" rows="1" placeholder="Ask anything about this page (Enter to send)..."></textarea>
+        <button id="send-btn" class="send-btn" title="Send Question (Enter)">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="22" y1="2" x2="11" y2="13"></line>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+          </svg>
+        </button>
+      </div>
+      <div class="input-footer">
+        <span>Shift+Enter for newline</span>
+        <button id="clear-chat-btn" class="clear-chat-btn">🗑️ Clear Chat</button>
+      </div>
+    </div>
+
+    <!-- Settings Drawer -->
+    <div class="settings-drawer" id="settings-drawer">
+      <div class="settings-header">
+        <h3>Configuration</h3>
+        <button id="close-settings-btn" class="icon-btn">✕</button>
+      </div>
+
+      <div class="form-group">
+        <label for="backend-url-input">Backend API URL</label>
+        <input type="text" id="backend-url-input" class="form-control" value="http://localhost:8000">
+      </div>
+
+      <div class="form-group">
+        <label for="groq-api-key-input">Groq API Key (Optional override)</label>
+        <input type="password" id="groq-api-key-input" class="form-control" placeholder="gsk_... (Defaults to backend .env)">
+      </div>
+
+      <div class="form-group">
+        <label for="groq-model-input">Groq Model</label>
+        <input type="text" id="groq-model-input" class="form-control" value="llama-3.3-70b-versatile">
+      </div>
+
+      <div class="form-group">
+        <label for="hf-token-input">Hugging Face Token (Optional)</label>
+        <input type="password" id="hf-token-input" class="form-control" placeholder="hf_... (Defaults to backend .env)">
+      </div>
+
+      <div class="form-group">
+        <label for="tavily-api-key-input">Tavily API Key (Optional override)</label>
+        <input type="password" id="tavily-api-key-input" class="form-control" placeholder="tvly-... (Defaults to backend .env)">
+      </div>
+
+      <div class="server-status-card" id="server-status-card">
+        <strong>Server & Redis Health</strong>
+        <span id="server-health-text" style="color: var(--text-secondary);">Checking localhost:8000...</span>
+      </div>
+
+      <button id="save-settings-btn" class="btn-primary" style="margin-top: auto;">Save Settings</button>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

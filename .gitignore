@@ -1,0 +1,62 @@
+# ============================================
+# PageIntel AI - Git Ignore
+# ============================================
+
+# Environment variables & secrets (CRITICAL: Never commit API keys!)
+.env
+.env.*
+!.env.example
+backend/.env
+backend/.env.*
+!backend/.env.example
+
+# Python virtual environments
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Distribution / packaging
+build/
+dist/
+eggs/
+*.egg-info/
+.eggs/
+
+# Redis database dumps & local data
+dump.rdb
+*.rdb
+redis_data/
+data/
+
+# Logs & temporary files
+*.log
+*.tmp
+*.bak
+.system_generated/
+
+# IDE & Editor configurations
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.antigravity-ide/
+.gemini/
+
+# Operating system files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
